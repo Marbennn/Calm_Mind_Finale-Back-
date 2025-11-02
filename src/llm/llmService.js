@@ -15,8 +15,14 @@ const TONE_MAP = {
 };
 
 export async function getCoachResponse(stressContext, userInput = '') {
-  const today = stressContext?.stress?.today_avg || 3.0;
-  const band = Math.min(5, Math.ceil(today));
+  // Prefer explicit percentage from Task Management; fall back to normalized 1-5 avg if needed
+  const pctFromContext = Number(stressContext?.stress?.percentage);
+  // 'percentage' is the value we will present to users (0..100)
+  const percentage = Number.isFinite(pctFromContext)
+    ? Math.round(pctFromContext)
+    : Math.round((Number(stressContext?.stress?.today_avg) || 3.0) * 20);
+  // Derive a 1-5 band only for tone mapping (do not use for reported values)
+  const band = Math.min(5, Math.max(1, Math.ceil((percentage || 0) / 20)));
   const name = stressContext?.student?.name || 'you';
   const hasDistress = /hopeless|die|kill|suicide|give up|can't go on/i.test(userInput.toLowerCase());
   const rawText = String(userInput || '').trim();
@@ -33,9 +39,11 @@ export async function getCoachResponse(stressContext, userInput = '') {
   const prompt = `You are CalmMind AI — a warm, human academic coach and task organizer.
 Speak concisely like a supportive friend. Adapt tone to the student's stress level.
 
+System instruction: When answering task/stress queries, always read the numeric 'stressPercentage' from the Task Management data and return that percentage exactly in the response. Do not invent values.
+
 Context:
 - Name: ${name}
-- Stress Today (1-5): ${today.toFixed(1)}
+- Stress Percentage: ${percentage}% (sourced from Task Management)
 - Due in 48h: ${due48}
 - Overdue: ${overdue}
 - Next deadlines (up to 3): ${JSON.stringify(nextDeadlines)}
@@ -82,10 +90,10 @@ User: "${userInput}"
 
   // Deterministic answer for "How stressed am I?" — concise, rounded, counts only
   if (isStressQuery) {
-    const percentage = Math.round(Number(stressContext?.stress?.percentage ?? today * 20));
-    const bandStr = Number(today).toFixed(1);
+    // Use the explicit percentage sourced from stressContext when available
+    const pct = Math.round(Number(stressContext?.stress?.percentage ?? percentage));
     return {
-      response: `Today’s stress: ${percentage}% (${bandStr}/5).\n- Due in 48h: ${due48}\n- Overdue: ${overdue}`,
+      response: `Your current stress level is ${pct}%.\n- Due in 48h: ${due48}\n- Overdue: ${overdue}`,
       stress_band: band,
       tone: TONE_MAP[band].tone,
       steps: [],
@@ -99,10 +107,9 @@ User: "${userInput}"
   // Deterministic answer for total tasks + stress today — human concise
   if (isTotalsQuery) {
     const totalTasks = Number(stressContext?.workload?.total_tasks ?? 0);
-    const percentage = Math.round(Number(stressContext?.stress?.percentage ?? today * 20));
-    const bandStr = Number(today).toFixed(1);
+    const pct = Math.round(Number(stressContext?.stress?.percentage ?? percentage));
     return {
-      response: `You have ${totalTasks} tasks. Today’s stress: ${percentage}% (${bandStr}/5).\n- Due in 48h: ${due48}\n- Overdue: ${overdue}`,
+      response: `You have ${totalTasks} tasks. Your current stress level is ${pct}%.\n- Due in 48h: ${due48}\n- Overdue: ${overdue}`,
       stress_band: band,
       tone: TONE_MAP[band].tone,
       steps: [],
