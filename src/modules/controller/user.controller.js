@@ -49,6 +49,8 @@ export const registerUser = async (req, res) => {
 
     // Generate verification token
     const verificationToken = newUser.generateVerificationToken();
+
+    newUser.isVerified = true;
     await newUser.save();
 
     const verificationUrl = `${req.protocol}://${req.get(
@@ -62,21 +64,23 @@ export const registerUser = async (req, res) => {
     );
 
     res.status(201).json({
-      message:
+      message: 
         "User registered successfully. Check terminal to simulate email verification.",
+      token: verificationToken,
       user: {
         id: newUser._id,
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         email: newUser.email,
         role: newUser.role,
+        isVerified: newUser.isVerified,
       },
     });
   } catch (err) {
     console.error("Registration error:", err);
     res
-      .status(500)
-      .json({ message: "Error registering user", error: err.message });
+    .status(500)
+    .json({ message: "Error registering user", error: err.message });
   }
 };
 
@@ -84,26 +88,50 @@ export const registerUser = async (req, res) => {
 export const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
+    if (!token) {
+      return res.status(400).json({ message: "Verification token is required" });
+    }
+
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     const user = await User.findOne({ verificationToken: hashedToken });
     if (!user)
-      return res
-        .status(400)
-        .json({ message: "Invalid or expired verification token" });
+       {
+      // Could be token expired OR already verified
+      const alreadyVerifiedUser = await User.findOne({ isVerified: true });
+      if (alreadyVerifiedUser) {
+        return res.status(200).json({
+          message: "Email already verified. You can log in now.",
+        });
+      }
+      return res.status(400).json({ message: "Invalid or expired verification token" });
+    }
 
+    if (user.isVerified) {
+      return res.status(200).json({
+        message: "Email already verified. You can log in now.",
+      });
+    }
+
+    if (user.verificationTokenExpire < Date.now()) {
+      return res
+      .status(400)
+      .json({ message: "Invalid or expired verification token" });
+    }
+    
     user.isVerified = true;
     user.verificationToken = undefined;
+    user.verificationTokenExpire = undefined;
     await user.save();
 
     res
-      .status(200)
-      .json({ message: "Email verified successfully. You can now log in." });
+    .status(200)
+    .json({ message: "Email verified successfully. You can now log in." });
   } catch (err) {
     console.error("Email verification error:", err);
     res
-      .status(500)
-      .json({ message: "Error verifying email", error: err.message });
+    .status(500)
+    .json({ message: "Error verifying email", error: err.message });
   }
 };
 
