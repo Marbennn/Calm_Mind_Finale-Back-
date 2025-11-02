@@ -7,12 +7,27 @@ const getStartedProfileSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    course: { type: String, required: true },
-    yearLevel: { type: String, required: true },
-    studentNumber: { type: String, required: true, unique: true },
-    address: { type: String, required: true },
-    contactNumber: { type: String, required: true },
-    profileImage: { type: String, default: "" },
+    department: {
+      type: String,
+      required: true,
+    },
+    course: {
+      type: String,
+      required: true,
+    },
+    yearLevel: {
+      type: String,
+      required: true,
+    },
+    studentNumber: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    profileImage: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
