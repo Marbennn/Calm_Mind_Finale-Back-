@@ -55,12 +55,22 @@ export const createTask = async (req, res) => {
         .json({ message: "Title and due date are required." });
     }
 
+    // Allow client to set start_date if provided (validate format)
+    let parsedStart = null;
+    if (req.body.start_date) {
+      const s = new Date(req.body.start_date);
+      if (isNaN(s.getTime())) {
+        return res.status(400).json({ message: "Invalid start_date format." });
+      }
+      parsedStart = s;
+    }
+
     const task = new Task({
       user_id,
       title,
       description: description || "",
       priority: priority || "Low",
-      start_date: new Date(),
+      start_date: parsedStart || new Date(),
       due_date,
       status: status || "todo",
       tags: Array.isArray(tags)
@@ -89,41 +99,63 @@ export const createTask = async (req, res) => {
 };
 
 // ======================================================
-//                UPDATE TASK STATUS
+//                UPDATE TASK (FULL UPDATE)
 // ======================================================
 export const updateTaskStatus = async (req, res) => {
-    try {
-        const user_id = req.user.id; // Get user_id from auth token
-        const { id } = req.params;
-        const { title, description, priority, status, tags } = req.body;
+  try {
+    const user_id = req.user.id; // Get user_id from auth token
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      priority,
+      status,
+      tags,
+      start_date,
+      due_date,
+    } = req.body;
 
-        const task = await Task.findOne({ _id: id, user_id });
-        if (!task) return res.status(404).json({ message: "Task not found" });
+    const task = await Task.findOne({ _id: id, user_id });
+    if (!task) return res.status(404).json({ message: "Task not found" });
 
-        // Update all fields if provided
-        if (title) task.title = title;
-        if (description !== undefined) task.description = description;
-        if (priority) task.priority = priority;
-        if (status) task.status = status;
-        if (Array.isArray(tags)) task.tags = tags;
-
-        await task.save();
-
-        // Add notification for significant changes
-        if (title && title !== task.title) {
-            await Notification.create({
-                user_id,
-                message: `Task renamed to "${title}"`,
-                type: "general",
-            });
-        }
-
-        res.json({ task });
-    } catch (err) {
-        console.error(err);
-        logger.error(err); // Also log to file
-        res.status(500).json({ message: "Failed to update task." });
+    // If both dates supplied, validate order
+    if (start_date && due_date) {
+      const s = new Date(start_date);
+      const d = new Date(due_date);
+      if (isNaN(s.getTime()) || isNaN(d.getTime())) {
+        return res.status(400).json({ message: "Invalid date format." });
+      }
+      if (d < s) {
+        return res.status(400).json({ message: "Due date cannot be earlier than start date." });
+      }
     }
+
+    // Update fields when provided
+    if (title) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (priority) task.priority = priority;
+    if (status) task.status = status;
+    if (Array.isArray(tags)) task.tags = tags;
+    if (start_date) task.start_date = new Date(start_date);
+    if (due_date) task.due_date = new Date(due_date);
+
+    await task.save();
+
+    // Add notification for significant changes (rename)
+    if (title && title !== task.title) {
+      await Notification.create({
+        user_id,
+        message: `Task renamed to "${title}"`,
+        type: "general",
+      });
+    }
+
+    res.json({ task });
+  } catch (err) {
+    console.error(err);
+    logger.error(err); // Also log to file
+    res.status(500).json({ message: "Failed to update task." });
+  }
 };
 
 // ======================================================
