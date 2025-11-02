@@ -15,10 +15,12 @@ mongoose
     }
 
     const superadmin = new User({
-      name: "Super Admin",
+      firstName: "Super",
+      lastName: "Admin",
       email: "superadmin@example.com",
       password: "SuperSecure123",
       role: "superadmin",
+      isVerified: true,
     });
     await superadmin.save();
 

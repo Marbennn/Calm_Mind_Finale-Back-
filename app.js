@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
-import { authenticateToken } from "./src/middleware/auth.js";
+import { authenticateToken, authorizeRole } from "./src/middleware/auth.js";
 
 // -------------------- ROUTE IMPORTS --------------------
 import userRoutes from "./src/modules/auth/routes/user.routes.js";
@@ -15,13 +15,20 @@ import tasksRoutes from "./src/modules/tasks/routes/tasks.routes.js";
 import llmRoutes from "./src/llm/routes/llm.routes.js";
 import profileRoutes from "./src/modules/routes/profile.routes.js";
 import notificationRoutes from "./src/modules/notifications/routes/notification.routes.js"; // ✅ NEW
+import adminRoutes from "./src/modules/admin/routes/admin.routes.js";
 
 dotenv.config();
 
 const app = express();
 
 // -------------------- MIDDLEWARE --------------------
-app.use(cors());
+const corsOptions = {
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(bodyParser.json());
 
@@ -37,6 +44,12 @@ app.use("/api/coach", authenticateToken, coachRoutes);
 app.use("/api/tasks", authenticateToken, tasksRoutes);
 app.use("/api/llm", authenticateToken, llmRoutes);
 app.use("/api/notifications", authenticateToken, notificationRoutes); // ✅ NEW notifications route
+app.use(
+  "/api/admin",
+  authenticateToken,
+  authorizeRole(["admin", "superadmin"]),
+  adminRoutes
+);
 
 // Profile route (check if this should be protected)
 app.use("/api/getStarted", profileRoutes);

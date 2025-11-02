@@ -16,7 +16,7 @@ const logger = winston.createLogger({
 // ======================================================
 export const getTasks = async (req, res) => {
   try {
-    const user_id = req.user.id; // from token, not query
+    const user_id = req.user.id || req.user._id; // from token, not query
     const tasks = await Task.find({ user_id });
 
     const mappedTasks = tasks.map((t) => ({
@@ -45,7 +45,7 @@ export const getTasks = async (req, res) => {
 // ======================================================
 export const createTask = async (req, res) => {
   try {
-    const user_id = req.user.id; // from token
+    const user_id = req.user.id || req.user._id; // from token
     const { title, due_date, description, priority, subtasks, tags, status } =
       req.body;
 
@@ -103,7 +103,7 @@ export const createTask = async (req, res) => {
 // ======================================================
 export const updateTaskStatus = async (req, res) => {
   try {
-    const user_id = req.user.id; // Get user_id from auth token
+    const user_id = req.user.id || req.user._id; // Get user_id from auth token
     const { id } = req.params;
     const {
       title,
@@ -163,7 +163,7 @@ export const updateTaskStatus = async (req, res) => {
 // ======================================================
 export const rescheduleTask = async (req, res) => {
   try {
-    const user_id = req.user.id;
+    const user_id = req.user.id || req.user._id;
     const { id } = req.params;
     const { due_date, subtasks } = req.body;
 
@@ -197,7 +197,7 @@ export const rescheduleTask = async (req, res) => {
 // ======================================================
 export const splitTask = async (req, res) => {
   try {
-    const user_id = req.user.id;
+    const user_id = req.user.id || req.user._id;
     const { id } = req.params;
     const { subtasks } = req.body;
 
@@ -227,7 +227,7 @@ export const splitTask = async (req, res) => {
 // ======================================================
 export const deleteTask = async (req, res) => {
   try {
-    const user_id = req.user.id;
+    const user_id = req.user.id || req.user._id;
     const { id } = req.params;
 
     const task = await Task.findOneAndDelete({ _id: id, user_id });
@@ -253,7 +253,7 @@ export const deleteTask = async (req, res) => {
 // ======================================================
 export const deleteAllTasks = async (req, res) => {
   try {
-    const user_id = req.user.id; // only deletes current user's tasks
+    const user_id = req.user.id || req.user._id; // only deletes current user's tasks
     await Task.deleteMany({ user_id });
 
     // ✅ Notify user that all tasks were deleted

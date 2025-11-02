@@ -6,10 +6,17 @@ export const registerUser = async (req, res) => {
   try {
     console.log('📝 Registration attempt:', { ...req.body, password: '[REDACTED]' });
     
-    const { name, email, password, role } = req.body;
-    if (!name || !email || !password) {
+    const { firstName: rawFirstName, lastName: rawLastName, name, email, password, role } = req.body;
+    let firstName = rawFirstName;
+    let lastName = rawLastName;
+    if ((!firstName || !lastName) && name) {
+      const parts = String(name).trim().split(/\s+/);
+      firstName = firstName || parts.shift();
+      lastName = lastName || (parts.length ? parts.join(' ') : undefined);
+    }
+    if (!firstName || !lastName || !email || !password) {
       console.log('❌ Registration failed: Missing required fields');
-      return res.status(400).json({ message: 'Name, email, and password are required.' });
+      return res.status(400).json({ message: 'firstName, lastName, email, and password are required.' });
     }
 
     const existing = await User.findOne({ email });
@@ -19,7 +26,8 @@ export const registerUser = async (req, res) => {
     }
 
     const user = new User({
-      name,
+      firstName,
+      lastName,
       email,
       password,
       role: role || 'user',
