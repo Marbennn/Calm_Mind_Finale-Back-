@@ -1,4 +1,3 @@
-// src/modules/controller/user.controller.js
 import User from "../auth/model/user.model.js";
 import GetStartedProfile from "../getStarted/model/getStarted.model.js";
 import bcrypt from "bcryptjs";
@@ -18,16 +17,18 @@ const sendEmail = async (to, subject, text) => {
 // -------------------- REGISTER --------------------
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Name, email, and password are required" });
+    const { firstName, lastName, email, password, role } = req.body;
+
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({
+        message: "First name, last name, email, and password are required",
+      });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email))
       return res.status(400).json({ message: "Invalid email format" });
+
     if (password.length < 6)
       return res
         .status(400)
@@ -38,7 +39,9 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
 
     const newUser = new User({
-      name,
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`.trim(),
       email: email.toLowerCase(),
       password,
       role: role || "user",
@@ -51,6 +54,7 @@ export const registerUser = async (req, res) => {
     const verificationUrl = `${req.protocol}://${req.get(
       "host"
     )}/api/users/verify-email/${verificationToken}`;
+
     await sendEmail(
       newUser.email,
       "Verify your email",
@@ -62,7 +66,8 @@ export const registerUser = async (req, res) => {
         "User registered successfully. Check terminal to simulate email verification.",
       user: {
         id: newUser._id,
-        name: newUser.name,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
         email: newUser.email,
         role: newUser.role,
       },
@@ -141,7 +146,8 @@ export const loginUser = async (req, res) => {
       token,
       user: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.role,
         profileCompleted,
@@ -153,7 +159,7 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// -------------------- FORGOT PASSWORD (Generate + Log 6-digit Code) --------------------
+// -------------------- FORGOT PASSWORD --------------------
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -162,11 +168,9 @@ export const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Generate 6-digit code using the model method
     const code = user.generateResetCode();
     await user.save();
 
-    // Print the reset code in the terminal instead of sending email
     console.log("--------------------------------------------------");
     console.log(`Password reset code for ${user.email}: ${code}`);
     console.log("This code will expire in 10 minutes.");
@@ -185,7 +189,7 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-// -------------------- RESET PASSWORD (Verify code + Set New Password) --------------------
+// -------------------- RESET PASSWORD --------------------
 export const resetPassword = async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
@@ -196,11 +200,10 @@ export const resetPassword = async (req, res) => {
         .json({ message: "Email, code, and new password are required" });
     }
 
-    // Find the user by email and valid reset code
     const user = await User.findOne({
       email: email.toLowerCase(),
       resetCode: code,
-      resetCodeExpire: { $gt: Date.now() }, // check if code is still valid
+      resetCodeExpire: { $gt: Date.now() },
     });
 
     if (!user) {
@@ -209,7 +212,6 @@ export const resetPassword = async (req, res) => {
         .json({ message: "Invalid or expired verification code" });
     }
 
-    // Update password and clear reset code fields
     user.password = newPassword;
     user.resetCode = undefined;
     user.resetCodeExpire = undefined;
@@ -254,7 +256,8 @@ export const getUserProfile = async (req, res) => {
     res.json({
       user: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.role,
         profileCompleted,
@@ -284,7 +287,8 @@ export const completeUserProfile = async (req, res) => {
       message: "Profile completed successfully.",
       user: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         role: user.role,
         profileCompleted: true,
@@ -320,7 +324,6 @@ export const updateUserPassword = async (req, res) => {
         .status(400)
         .json({ message: "New password must be at least 6 characters long" });
 
-    // Don't hash manually — let the pre-save hook handle it
     user.password = newPassword;
     await user.save();
 
@@ -353,7 +356,7 @@ export const logoutUser = async (req, res) => {
 // -------------------- SUPERADMIN CREATION --------------------
 export const createUserBySuperAdmin = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { firstName, lastName, email, password, role } = req.body;
     if (req.user.role !== "superadmin")
       return res
         .status(403)
@@ -368,7 +371,9 @@ export const createUserBySuperAdmin = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
 
     const newUser = new User({
-      name,
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`.trim(),
       email: email.toLowerCase(),
       password,
       role,
@@ -379,7 +384,8 @@ export const createUserBySuperAdmin = async (req, res) => {
       message: `${role} account created successfully.`,
       user: {
         id: newUser._id,
-        name: newUser.name,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
         email: newUser.email,
         role: newUser.role,
       },

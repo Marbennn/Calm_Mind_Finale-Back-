@@ -2,49 +2,41 @@ import mongoose from "mongoose";
 import User from "../auth/model/user.model.js";
 import GetStartedProfile from "../getStarted/model/getStarted.model.js";
 
-/**
- * GET /api/getStarted/profile/:userId
- * Fetch combined user + profile data
- */
 export const getProfile = async (req, res) => {
   try {
     const { userId } = req.params;
-
-    // Convert to ObjectId to ensure proper matching
     const objectId = new mongoose.Types.ObjectId(userId);
 
-    // Find user
     const user = await User.findById(objectId).lean();
-    if (!user)
+    if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+    }
 
-    // Find GetStarted profile
     const profile = await GetStartedProfile.findOne({
       userId: objectId,
     }).lean();
-    if (!profile)
+    if (!profile) {
       return res
         .status(404)
         .json({ success: false, message: "Profile not found" });
+    }
 
-    // Split name into first and last
-    const [firstName = "", lastName = ""] = user.name
-      ? user.name.split(" ")
-      : ["", ""];
-
-    // Return data matching frontend structure
     const data = {
-      firstName,
-      lastName,
-      fullName: `${firstName} ${lastName}`.trim(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: `${user.firstName} ${user.lastName}`.trim(),
+      department: profile.department,
       yearLevel: profile.yearLevel,
       course: profile.course,
       studentNumber: profile.studentNumber,
-      contactNumber: profile.contactNumber,
-      address: profile.address,
-      profileImage: profile.profileImage,
+      profileImage: profile.profileImage
+        ? `${req.protocol}://${req.get("host")}/${profile.profileImage.replace(
+            /\\/g,
+            "/"
+          )}`
+        : null,
       userId: {
         _id: user._id,
         email: user.email,
@@ -63,73 +55,69 @@ export const getProfile = async (req, res) => {
   }
 };
 
-/**
- * PUT /api/getStarted/update-profile/:userId
- * Update both user and GetStartedProfile data
- */
 export const updateProfile = async (req, res) => {
   try {
     const { userId } = req.params;
     const {
       firstName,
       lastName,
+      department,
       yearLevel,
       course,
       studentNumber,
-      contactNumber,
-      address,
     } = req.body;
 
-    // Convert to ObjectId
     const objectId = new mongoose.Types.ObjectId(userId);
 
-    // Optional: handle avatar file
-    const profileImage = req.file ? req.file.path : req.body.profileImage;
+    const profileImage = req.file
+      ? req.file.path.replace(/\\/g, "/")
+      : req.body.profileImage || null;
 
-    // Update User model
     const updatedUser = await User.findByIdAndUpdate(
       objectId,
       {
-        name: `${firstName} ${lastName}`.trim(),
+        firstName,
+        lastName,
         profileCompleted: true,
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
-    if (!updatedUser)
+    if (!updatedUser) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+    }
 
-    // Update GetStartedProfile model
     const updatedProfile = await GetStartedProfile.findOneAndUpdate(
       { userId: objectId },
       {
+        department,
         yearLevel,
         course,
         studentNumber,
-        contactNumber,
-        address,
-        profileImage,
+        ...(profileImage && { profileImage }),
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
-    if (!updatedProfile)
+    if (!updatedProfile) {
       return res
         .status(404)
         .json({ success: false, message: "Profile not found" });
+    }
 
     const data = {
       firstName,
       lastName,
       fullName: `${firstName} ${lastName}`.trim(),
+      department: updatedProfile.department,
       yearLevel: updatedProfile.yearLevel,
       course: updatedProfile.course,
       studentNumber: updatedProfile.studentNumber,
-      contactNumber: updatedProfile.contactNumber,
-      address: updatedProfile.address,
-      profileImage: updatedProfile.profileImage,
+      profileImage: updatedProfile.profileImage
+        ? `${req.protocol}://${req.get("host")}/${updatedProfile.profileImage}`
+        : null,
       userId: {
         _id: updatedUser._id,
         email: updatedUser.email,

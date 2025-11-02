@@ -25,12 +25,11 @@ export const upload = multer({ storage });
 // Create Profile
 export const createProfile = async (req, res) => {
   try {
-    const { course, yearLevel, studentNumber, address, contactNumber } =
-      req.body;
-    const userId = req.user?._id; // From token (not from body)
+    const { department, course, yearLevel, studentNumber } = req.body;
+    const userId = req.user?._id; // from token middleware
     const profileImage = req.file ? req.file.path : "";
 
-    if (!course || !yearLevel || !studentNumber || !address || !contactNumber) {
+    if (!department || !course || !yearLevel || !studentNumber) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -46,11 +45,10 @@ export const createProfile = async (req, res) => {
     }
 
     const newProfile = await GetStartedProfile.create({
+      department,
       course,
       yearLevel,
       studentNumber,
-      address,
-      contactNumber,
       profileImage,
       userId,
     });
@@ -91,7 +89,6 @@ export const getProfileByStudentNumber = async (req, res) => {
   }
 };
 
-// Get Profile by User ID (for dashboard reflection)
 export const getProfileByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -116,7 +113,6 @@ export const getProfileByUserId = async (req, res) => {
   }
 };
 
-// Update Profile (editable fields)
 export const updateProfile = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -158,7 +154,6 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-// Update Password
 export const updatePassword = async (req, res) => {
   try {
     const { userId } = req.params;

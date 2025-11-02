@@ -17,8 +17,6 @@ import { authenticateToken, authorizeRole } from "../../../middleware/auth.js";
 
 const router = Router();
 
-// -------------------- PUBLIC ROUTES --------------------
-
 // Register new user
 router.post("/register", registerUser);
 
@@ -31,13 +29,10 @@ router.post("/login", loginUser);
 // Forgot password
 router.post("/forgot-password", forgotPassword);
 
-// ✅ FIXED: Reset password (use body with email, code, newPassword)
 router.post("/reset-password", resetPassword);
 
 // Update password (requires authentication)
 router.put("/update-password", authenticateToken, updateUserPassword);
-
-// -------------------- PROTECTED ROUTES --------------------
 
 // Logout
 router.post("/logout", authenticateToken, logoutUser);
