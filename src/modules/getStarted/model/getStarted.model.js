@@ -12,6 +12,10 @@ const getStartedProfileSchema = new mongoose.Schema(
     yearLevel: { type: String, required: true },
     studentNumber: { type: String, required: true, unique: true },
     profileImage: { type: String, default: "" },
+    // Live/calculated stress fields (kept optional)
+    stressLevel: { type: Number, default: null }, // normalized 1-5
+    stressPercentage: { type: Number, default: null }, // 0-100
+    stressMetrics: { type: Object, default: {} },
   },
   { timestamps: true }
 );

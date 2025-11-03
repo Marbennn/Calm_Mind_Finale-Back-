@@ -11,9 +11,13 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: ["user", "admin", "professor", "superadmin"],
+      enum: ["user", "student", "admin", "professor", "superadmin"],
       default: "user",
     },
+    // Student-specific fields (optional)
+    studentNumber: { type: String, index: true },
+    yearLevel: { type: String },
+    department: { type: String },
     profileCompleted: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
 

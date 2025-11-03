@@ -1,6 +1,7 @@
 // src/modules/admin/routes/admin.routes.js
 import express from 'express';
 import { getAnalytics } from '../../controller/admin.controller.js';
+import { getStudentsByDepartment } from '../../controller/admin.analytics.controller.js';
 import { authenticateToken, authorizeRole } from '../../../middleware/auth.js';
 
 // lazy import to avoid circulars when not needed
@@ -16,6 +17,14 @@ router.post(
   authenticateToken,
   authorizeRole(['admin', 'superadmin']),
   getAnalytics
+);
+
+// GET /api/admin/students/by-department
+router.get(
+  '/students/by-department',
+  authenticateToken,
+  authorizeRole(['admin', 'superadmin']),
+  getStudentsByDepartment
 );
 
 // GET /api/admin/users -> wrapper returning { users: [...] }
@@ -89,6 +98,10 @@ router.post(
           department: p.department,
           yearLevel: p.yearLevel,
           studentNumber: p.studentNumber,
+          // include live stress fields when available so admin UI can show current stress
+          stressLevel: p.stressLevel || null,
+          stressPercentage: p.stressPercentage || null,
+          stressMetrics: p.stressMetrics || null,
         };
       });
       return res.json({ profiles: results });
